@@ -1,0 +1,63 @@
+# ${EXECUTOR_IMAGE} is substituted by scripts/render_manifests.sh from the ECR repo
+# URL (terraform output) plus an image tag - see that script before applying this
+# file directly.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: executor
+  namespace: agent
+  labels:
+    app: executor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: executor
+  template:
+    metadata:
+      labels:
+        app: executor
+    spec:
+      serviceAccountName: executor
+      # No AWS SDK, no AWS env vars, no IRSA annotation on the ServiceAccount above -
+      # this identity is Kubernetes-only by construction, not by omission.
+      containers:
+        - name: executor
+          image: ${EXECUTOR_IMAGE}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: LOG_LEVEL
+              value: "INFO"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # DNS name the orchestrator's EXECUTOR_URL env var points at:
+  # http://executor.agent.svc.cluster.local. Never exposed beyond ClusterIP.
+  name: executor
+  namespace: agent
+spec:
+  type: ClusterIP
+  selector:
+    app: executor
+  ports:
+    - port: 80
+      targetPort: 8080

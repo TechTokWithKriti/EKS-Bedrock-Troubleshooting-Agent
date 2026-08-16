@@ -1,0 +1,43 @@
+# Terraform
+# Note: .terraform.lock.hcl is intentionally NOT ignored - commit it so everyone
+# resolves the same provider/module versions.
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+terraform/*.tfvars.json
+terraform/crash.log
+terraform/override.tf
+terraform/override.tf.json
+terraform/*.tfplan
+terraform/tfplan*.out
+
+# Rendered / generated manifests (contain account-specific ARNs and image URIs)
+k8s/rendered/
+
+# Kubeconfig, in case it ever gets pulled into the repo dir
+kubeconfig
+*.kubeconfig
+
+# AWS
+.aws/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Local scratch
+*.log
+
+# Talk-prep notes: full architecture/deviations/recording narrative, not part of the
+# public setup instructions (see README.md for what actually ships)
+FLOW.md

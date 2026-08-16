@@ -1,0 +1,82 @@
+# ${ORCHESTRATOR_ROLE_ARN}, ${ORCHESTRATOR_IMAGE}, ${AWS_REGION} and
+# ${BEDROCK_INFERENCE_PROFILE_ID} are substituted by scripts/render_manifests.sh from
+# `terraform output` - see that script before applying this file directly.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orchestrator
+  namespace: agent
+  annotations:
+    eks.amazonaws.com/role-arn: ${ORCHESTRATOR_ROLE_ARN}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: agent
+  labels:
+    app: orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      serviceAccountName: orchestrator
+      # This identity calls Bedrock, never the Kubernetes API - drop the default API
+      # token entirely rather than merely leaving it unused. The IRSA webhook's
+      # projected web-identity token (AWS_WEB_IDENTITY_TOKEN_FILE) is a separate
+      # mechanism and is unaffected by this.
+      automountServiceAccountToken: false
+      containers:
+        - name: orchestrator
+          image: ${ORCHESTRATOR_IMAGE}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AWS_REGION
+              value: "${AWS_REGION}"
+            - name: BEDROCK_MODEL_ID
+              value: "${BEDROCK_INFERENCE_PROFILE_ID}"
+            - name: EXECUTOR_URL
+              value: "http://executor.agent.svc.cluster.local"
+            - name: MAX_ITERATIONS
+              value: "5"
+            - name: LOG_LEVEL
+              value: "INFO"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: agent
+spec:
+  # ClusterIP, not LoadBalancer: reached via `kubectl port-forward` for the demo
+  # instead of a public internet-facing endpoint. See README "Deviations from spec".
+  type: ClusterIP
+  selector:
+    app: orchestrator
+  ports:
+    - port: 80
+      targetPort: 8080

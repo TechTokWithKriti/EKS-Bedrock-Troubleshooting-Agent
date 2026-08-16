@@ -1,0 +1,30 @@
+# Deliberately broken: references a tag that does not exist on a real, public,
+# unauthenticated registry, which reliably produces ImagePullBackOff without needing
+# any registry credentials in the cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments
+  namespace: payments
+  labels:
+    app: payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments
+  template:
+    metadata:
+      labels:
+        app: payments
+    spec:
+      containers:
+        - name: payments
+          image: public.ecr.aws/nginx/nginx:this-tag-does-not-exist
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

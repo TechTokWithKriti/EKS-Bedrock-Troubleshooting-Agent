@@ -1,0 +1,33 @@
+# The authorization boundary the whole demo hinges on: get/list on pods and events
+# only, bound cluster-wide (including kube-system). `secrets` is not in this list -
+# not commented out, never added. That omission is what RBAC actually enforces; see
+# BUILD_SPEC.md "Secrets | Denied cluster-wide".
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: executor
+  namespace: agent
+  # No eks.amazonaws.com/role-arn annotation, deliberately - this identity has no
+  # AWS side at all.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: executor-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "events"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: executor-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: executor
+    namespace: agent
+roleRef:
+  kind: ClusterRole
+  name: executor-reader
+  apiGroup: rbac.authorization.k8s.io

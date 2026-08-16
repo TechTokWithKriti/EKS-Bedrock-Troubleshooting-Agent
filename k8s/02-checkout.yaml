@@ -1,0 +1,34 @@
+# Deliberately broken: envFrom references a Secret that is never created in this
+# namespace. The image pulls fine; the kubelet can't build the container's env, so
+# this produces CreateContainerConfigError - diagnosable from `get_pod_events`, not
+# from pod/container status alone. Do not add the referenced Secret.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: checkout
+  labels:
+    app: checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+        - name: checkout
+          image: public.ecr.aws/nginx/nginx:stable
+          envFrom:
+            - secretRef:
+                name: checkout-db-credentials # intentionally never created
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
